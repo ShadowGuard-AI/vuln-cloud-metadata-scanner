@@ -33,6 +33,8 @@ def describe_metadata(cloud_provider, metadata, show_values):
         return {"values_shown": True, "data": metadata}
     report = {"values_masked": True}
     if isinstance(metadata, dict):
+        # Only the top level keys are named. A nested dict shows up as the
+        # type name dict, so its inner keys stay out of the masked report.
         report["fields"] = {
             key: {"type": type(value).__name__, "value": MASK}
             for key, value in metadata.items()
@@ -68,6 +70,9 @@ class MetadataScanner:
         self.timeout = timeout
         self.user_agent = user_agent
         self.show_values = show_values
+        # Plain string joining, not urljoin. If the operator names a target
+        # with a path prefix, the metadata path lands after that prefix,
+        # which is what I want when the target is a proxy mounted under one.
         self.metadata_endpoints = {
             provider: self.target + path
             for provider, path in METADATA_PATHS.items()
@@ -88,11 +93,17 @@ class MetadataScanner:
             elif cloud_provider == "Azure":
                 request_headers["Metadata"] = "true"
             if headers:
+                # Caller headers are applied last, so a caller can replace
+                # even the provider header above. Nothing in main passes any
+                # today, but scan_endpoint is public and I keep that order.
                 request_headers.update(headers)
 
             logging.info(f"Attempting to access {cloud_provider} metadata endpoint: {url}")
 
             response = requests.get(url, timeout=self.timeout, headers=request_headers, allow_redirects=False)
+            # Redirects are not followed and raise_for_status turns a 3xx
+            # into a failure as well, since HTTPError is a RequestException.
+            # A metadata path that only redirects has not answered here.
             response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
 
             if cloud_provider == "Azure":
