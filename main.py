@@ -107,7 +107,15 @@ class MetadataScanner:
             response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
 
             if cloud_provider == "Azure":
-                 metadata = response.json()
+                try:
+                    metadata = response.json()
+                except ValueError:
+                    # The endpoint answered with HTTP 200 but the body is
+                    # not JSON. That still counts as answered, so fall back
+                    # to the text shape used for the other providers
+                    # instead of reporting the endpoint as silent.
+                    logging.info("Azure endpoint answered with a non-JSON body; reporting it as text.")
+                    metadata = response.text
             else:
                 metadata = response.text
 

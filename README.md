@@ -30,4 +30,4 @@ Example: `python main.py http://127.0.0.1:8080 --providers AWS Azure`
 - `--show-values`: Include full metadata values instead of the masked report.
 
 ## License
-Copyright (c) ShadowGuard-AI
+MIT License (see LICENSE).
